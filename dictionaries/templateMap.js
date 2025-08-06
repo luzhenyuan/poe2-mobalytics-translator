@@ -64,6 +64,7 @@ window.templateMap = {
   "#% increased Critical Hit Chance for Spells":"增加 #% 法術暴擊率",
   "#% increased Attack Speed":"增加 #% 攻擊速度",
   "# to Level of all Projectile Skills":"所有投射物技能的等級 #",
+  "+# to Level of all Projectile Skills":"所有投射物技能的等級 #",
   "#% to Critical Hit Chance":"#% 暴擊率",
   "#% increased chance to Ignite":"增加 #% 點燃機率",
   "# to Level of all Melee Skills":"所有近戰技能的等級 #",
