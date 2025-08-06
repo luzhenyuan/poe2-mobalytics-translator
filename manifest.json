@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Mobalytics POE2 翻译",
+  "version": "1.0",
+  "description": "动态翻译 Mobalytics POE2 页面中的英文文本",
+  "permissions": [],
+  "host_permissions": [
+    "https://mobalytics.gg/poe-2/builds/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://mobalytics.gg/poe-2/builds/*"],
+      "js": [
+        "dictionaries/exactMap.js",
+        "dictionaries/templateMap.js",
+        "dictionaries/fixedTextMap.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "48": "imgs/48.png",
+    "128": "imgs/128.png"
+  }
+}
