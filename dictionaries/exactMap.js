@@ -6875,4 +6875,5 @@ window.exactMap = {
   "Wool Cap":"羊毛便帽",
   "Aegis Buckler":"神禦輕盾",
   "Asphyxia's Wrath":"冰靈之吼",
+  "Ambrosia":"艾布蘿西雅",
 };
