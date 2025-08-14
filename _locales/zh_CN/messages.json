@@ -1,0 +1,10 @@
+{
+  "extension_name": {
+    "message": "Mobalytics POE2 翻译",
+    "description": "插件名称"
+  },
+  "extension_description": {
+    "message": "动态翻译 Mobalytics POE2 页面中的英文文本",
+    "description": "插件描述"
+  }
+}
