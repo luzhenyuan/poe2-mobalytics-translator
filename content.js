@@ -1,142 +1,197 @@
 (function () {
   'use strict';
 
-  const exactMap = window.exactMap || {};
-  const templateMap = window.templateMap || {};
-  const fixedTextMap = window.fixedTextMap || {};
-
-  const compiledTemplates = Object.entries(templateMap).map(([tpl, trans]) => {
-    const esc = tpl.replace(/([.*+?^=!:${}()|[\]/\\])/g, "\\$1");
-    const pattern = '^([+\\-]?)' + esc.replace(/#/g, '([\\d.\\-()]+)') + '$';
-    return { regex: new RegExp(pattern, 'i'), translation: trans };
-  });
-
-  const translatedSet = new WeakSet();
-
-  function debounce(fn, delay) {
-    let timer = null;
-    return function () {
-      clearTimeout(timer);
-      timer = setTimeout(fn, delay);
-    };
-  }
-
-  function multiQuery(selectors) {
-    for (const sel of selectors) {
-      const nodes = document.querySelectorAll(sel);
-      if (nodes.length) return nodes;
+  /**
+   * 配置类：存储所有的翻译映射和选择器配置。
+   */
+  class TranslationConfig {
+    constructor() {
+      this.exactMap = { ...window.Others, ...window.legendaryItems, ...window.passives, ...window.Skills };
+      this.templateMap = window.templateMap || {};
+      this.fixedTextMap = window.fixedTextMap || {};
+      this.selectorConfig = [
+        { selectors: ['[data-tippy-root] p', '[data-tippy-root] span'] },
+        { selectors: ['p.x2fl5vp.x1g1qkmr', 'p[data-test="skill-name"]'] },
+        { selectors: ['img[alt]', 'img.skill-icon'], attribute: 'alt' },
+        { selectors: ['span.x5qbwci.xggjnk3', 'span.skill-name'] },
+        { selectors: ['p.x1cabzks'] }
+      ];
     }
-    return [];
   }
 
-  // 通用精确翻译（不会覆盖）
-  function applyExactTranslation(elements, prop = 'textContent') {
-    elements.forEach(el => {
-      if (translatedSet.has(el)) return;
-      const val = prop === 'textContent' ? el.textContent.trim() : el.getAttribute(prop)?.trim();
-      if (val && exactMap[val] && !val.includes(exactMap[val])) {
-        const newVal = `${exactMap[val]} (${val})`;
-        if (prop === 'textContent') {
-          el.textContent = newVal;
-        } else {
-          el.setAttribute(prop, newVal);
-        }
-        translatedSet.add(el);
+  /**
+   * 翻译类：处理网页中的所有翻译操作。
+   */
+  class Translator {
+    constructor(config) {
+      this.config = config;
+      this.translatedSet = new WeakSet();
+      this.compiledTemplates = this.compileTemplates();
+      this.debouncedTranslate = this.debounce(this.translateAll.bind(this), 200);
+      this.initObserver();
+    }
+
+    /**
+     * 编译模板映射，生成匹配的正则表达式。
+     */
+    compileTemplates() {
+      return Object.entries(this.config.templateMap).map(([tpl, trans]) => {
+        const escapedTemplate = tpl.replace(/([.*+?^=!:${}()|[\]/\\])/g, "\\$1");
+        const pattern = '^([+\\-]?)' + escapedTemplate.replace(/#/g, '([\\d.\\-()]+)') + '$';
+        return { regex: new RegExp(pattern, 'i'), translation: trans };
+      });
+    }
+
+    /**
+     * 防抖函数：减少频繁执行的操作。
+     */
+    debounce(fn, delay) {
+      let timer = null;
+      return function () {
+        clearTimeout(timer);
+        timer = setTimeout(fn, delay);
+      };
+    }
+
+    /**
+     * 初始化 DOM 变化观察器，用于触发翻译操作。
+     */
+    initObserver() {
+      const observer = new MutationObserver(this.debouncedTranslate);
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.addEventListener('load', this.translateAll.bind(this));
+      document.addEventListener('click', () => setTimeout(this.translateAll.bind(this), 500));
+    }
+
+    /**
+     * 根据选择器查询 DOM 元素。
+     */
+    multiQuery(selectors) {
+      for (const sel of selectors) {
+        const nodes = document.querySelectorAll(sel);
+        if (nodes.length) return nodes;
       }
-    });
-  }
+      return [];
+    }
 
-  // 只替换元素里的文本节点，不动其他子节点（保持图片不丢失）
-  function applyExactTextOnlyTranslation(elements) {
-    elements.forEach(el => {
-      if (translatedSet.has(el)) return;
-      const original = el.textContent.trim();
-      if (exactMap[original] && !el.textContent.includes(exactMap[original])) {
-        el.childNodes.forEach(node => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            node.textContent = `${exactMap[original]} (${original})`;
+    /**
+     * 适用精确翻译：根据文本内容查找并替换翻译。
+     */
+    applyExactTranslation(elements, prop = 'textContent') {
+      elements.forEach(el => {
+        if (this.translatedSet.has(el)) return;
+        const val = prop === 'textContent' ? el.textContent.trim() : el.getAttribute(prop)?.trim();
+        if (val && this.config.exactMap[val] && !val.includes(this.config.exactMap[val])) {
+          const newVal = `${this.config.exactMap[val]} (${val})`;
+          if (prop === 'textContent') {
+            el.textContent = newVal;
+          } else {
+            el.setAttribute(prop, newVal);
           }
-        });
-        translatedSet.add(el);
-      }
-    });
-  }
-
-  function translateItemAttributes() {
-    document.querySelectorAll('ul li').forEach(el => {
-      if (translatedSet.has(el)) return;
-      const txt = el.textContent.trim();
-      for (const { regex, translation } of compiledTemplates) {
-        const m = txt.match(regex);
-        if (m) {
-          let res = translation;
-          m.slice(2).forEach(val => res = res.replace('#', val));
-          el.textContent = (m[1] || '') + res;
-          translatedSet.add(el);
-          break;
+          this.translatedSet.add(el);
         }
-      }
-    });
+      });
+    }
+
+    /**
+     * 只替换文本节点中的内容，不改变其他 DOM 子节点。
+     */
+    applyExactTextOnlyTranslation(elements) {
+      elements.forEach(el => {
+        if (this.translatedSet.has(el)) return;
+        const original = el.textContent.trim();
+        if (this.config.exactMap[original] && !el.textContent.includes(this.config.exactMap[original])) {
+          el.childNodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+              node.textContent = `${this.config.exactMap[original]} (${original})`;
+            }
+          });
+          this.translatedSet.add(el);
+        }
+      });
+    }
+
+    /**
+     * 翻译物品属性：处理与模板匹配的翻译。
+     */
+    translateItemAttributes() {
+      document.querySelectorAll('ul li').forEach(el => {
+        if (this.translatedSet.has(el)) return;
+        const txt = el.textContent.trim();
+        for (const { regex, translation } of this.compiledTemplates) {
+          const match = txt.match(regex);
+          if (match) {
+            let result = translation;
+            match.slice(2).forEach(val => result = result.replace('#', val));
+            el.textContent = (match[1] || '') + result;
+            this.translatedSet.add(el);
+            break;
+          }
+        }
+      });
+    }
+
+    /**
+     * 翻译固定文本：将文本替换为对应的固定翻译。
+     */
+    translateFixedText() {
+      const elements = Array.from(document.querySelectorAll('p, span, li')).filter(el => {
+        const txt = el.textContent;
+        if (!txt?.trim()) return false;
+        if (this.config.exactMap[txt.trim()]) return false;
+        return Object.keys(this.config.fixedTextMap).some(key => txt.includes(key));
+      });
+
+      elements.forEach(el => {
+        if (this.translatedSet.has(el)) return;
+        let txt = el.textContent;
+        for (const [en, zh] of Object.entries(this.config.fixedTextMap)) {
+          txt = txt.replace(new RegExp(`\\b${en}\\b`, 'g'), zh);
+        }
+        if (txt !== el.textContent) {
+          el.textContent = txt;
+          this.translatedSet.add(el);
+        }
+      });
+    }
+
+    /**
+     * 翻译 Tippy 提示框中的文本。
+     */
+    translateTippyRootText() {
+      const elements = Array.from(document.querySelectorAll('[data-tippy-root] span, [data-tippy-root] div'));
+      elements.forEach(el => {
+        if (this.translatedSet.has(el)) return;
+        const txt = el.textContent.trim();
+        if (!txt) return;
+        if (this.config.exactMap[txt]) {
+          el.textContent = `${this.config.exactMap[txt]} (${txt})`;
+          this.translatedSet.add(el);
+        } else if (this.config.fixedTextMap[txt]) {
+          el.textContent = this.config.fixedTextMap[txt];
+          this.translatedSet.add(el);
+        }
+      });
+    }
+
+    /**
+     * 翻译所有需要翻译的内容。
+     */
+    translateAll() {
+      // 遍历配置的选择器，动态翻译页面中的文本
+      this.config.selectorConfig.forEach(config => {
+        this.applyExactTranslation(this.multiQuery(config.selectors), config.attribute || 'textContent');
+      });
+
+      // 翻译物品属性、固定文本和 Tippy 提示框
+      this.translateItemAttributes();
+      this.translateFixedText();
+      this.translateTippyRootText();
+    }
   }
 
-  function translateFixedText() {
-    const elements = Array.from(document.querySelectorAll('p, span, li')).filter(el => {
-      const txt = el.textContent;
-      if (!txt?.trim()) return false;
-      if (exactMap[txt.trim()]) return false;
-      return Object.keys(fixedTextMap).some(key => txt.includes(key));
-    });
-    elements.forEach(el => {
-      if (translatedSet.has(el)) return;
-      let txt = el.textContent;
-      for (const [en, zh] of Object.entries(fixedTextMap)) {
-        txt = txt.replace(new RegExp(`\\b${en}\\b`, 'g'), zh);
-      }
-      if (txt !== el.textContent) {
-        el.textContent = txt;
-        translatedSet.add(el);
-      }
-    });
-  }
-
-  function translateTippyRootText() {
-    const elements = Array.from(document.querySelectorAll('[data-tippy-root] span, [data-tippy-root] div'));
-    elements.forEach(el => {
-      if (translatedSet.has(el)) return;
-      const txt = el.textContent.trim();
-      if (!txt) return;
-      if (exactMap[txt]) {
-        el.textContent = `${exactMap[txt]} (${txt})`;
-        translatedSet.add(el);
-      } else if (fixedTextMap[txt]) {
-        el.textContent = fixedTextMap[txt];
-        translatedSet.add(el);
-      }
-    });
-  }
-
-  function translateSupportGems() {
-    applyExactTextOnlyTranslation(document.querySelectorAll('div.x1gslohp'));
-  }
-
-  function translateAll() {
-    applyExactTranslation(multiQuery(['[data-tippy-root] p', '[data-tippy-root] span']));
-    applyExactTranslation(multiQuery(['p.x2fl5vp.x1g1qkmr', 'p[data-test="skill-name"]']));
-    applyExactTranslation(multiQuery(['img[alt]', 'img.skill-icon']), 'alt');
-    applyExactTranslation(multiQuery(['span.x5qbwci.xggjnk3', 'span.skill-name']));
-    applyExactTranslation(multiQuery(['p.x1cabzks']));
-
-    translateSupportGems();
-    translateItemAttributes();
-    translateFixedText();
-    translateTippyRootText();
-  }
-
-  const debouncedTranslate = debounce(translateAll, 200);
-  const observer = new MutationObserver(debouncedTranslate);
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  window.addEventListener('load', translateAll);
-  document.addEventListener('click', () => setTimeout(translateAll, 500));
+  // 初始化翻译配置和翻译器实例
+  const config = new TranslationConfig();
+  const translator = new Translator(config);
 
 })();
