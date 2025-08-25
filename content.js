@@ -3,9 +3,16 @@
 
   class TranslationConfig {
     constructor() {
-      this.exactMap = { ...window.Others, ...window.legendaryItems, ...window.passives, ...window.Skills };
+      this.exactMap = {
+        ...window.Others,
+        ...window.legendaryItems,
+        ...window.passives,
+        ...window.Skills
+      };
+
       this.templateMap = window.templateMap || {};
       this.fixedTextMap = window.fixedTextMap || {};
+
       this.selectorConfig = [
         { selectors: ['[data-tippy-root] p', '[data-tippy-root] span'] },
         { selectors: ['p[data-test="skill-name"]'] },
@@ -19,15 +26,18 @@
       this.config = config;
       this.translatedSet = new WeakSet();
       this.translatedTextNodes = new WeakSet();
+      this.observedTriangles = new WeakSet();
+
       this.compiledTemplates = this.compileTemplates();
       this.debouncedTranslate = this.debounce(this.translateAll.bind(this), 200);
+
       this.initObserver();
     }
 
     compileTemplates() {
       return Object.entries(this.config.templateMap).map(([tpl, trans]) => {
-        const escapedTemplate = tpl.replace(/([.*+?^=!:${}()|[\]/\\])/g, "\\$1");
-        const pattern = '^([+\\-]?)' + escapedTemplate.replace(/#/g, '([\\d.\\-()]+)') + '$';
+        const escaped = tpl.replace(/([.*+?^=!:${}()|[\]/\\])/g, "\\$1");
+        const pattern = '^([+\\-]?)' + escaped.replace(/#/g, '([\\d.\\-()]+)') + '$';
         return { regex: new RegExp(pattern, 'i'), translation: trans };
       });
     }
@@ -41,10 +51,24 @@
     }
 
     initObserver() {
-      const observer = new MutationObserver(this.debouncedTranslate);
-      observer.observe(document.body, { childList: true, subtree: true });
-      window.addEventListener('load', this.translateAll.bind(this));
-      document.addEventListener('click', () => setTimeout(this.translateAll.bind(this), 500));
+      const bodyObserver = new MutationObserver(() => {
+        this.debouncedTranslate();
+        this.observeTriangles();
+      });
+
+      bodyObserver.observe(document.body, { childList: true, subtree: true });
+
+      window.addEventListener('load', () => {
+        this.translateAll();
+        this.observeTriangles();
+      });
+
+      document.addEventListener('click', () => {
+        setTimeout(() => {
+          this.translateAll();
+          this.observeTriangles();
+        }, 300);
+      });
     }
 
     multiQuery(selectors) {
@@ -55,47 +79,42 @@
       return [];
     }
 
-    replaceTextNode(el, zh, en, useBreak = false) {
-      const frag = document.createDocumentFragment();
-      frag.append(zh);
-      if (useBreak) {
-        frag.append(document.createElement('br'));
-        frag.append(`(${en})`);
-      } else {
-        frag.append(` (${en})`);
-      }
-      el.textContent = ''; // 清空原内容
-      el.appendChild(frag);
-    }
-
     applyExactTranslation(elements, prop = 'textContent') {
       elements.forEach(el => {
         if (this.translatedSet.has(el)) return;
+
+        const value =
+          prop === 'textContent'
+            ? el.textContent.trim()
+            : el.getAttribute(prop)?.trim();
+
+        if (!value) return;
+
+        const translated = this.config.exactMap[value];
+        if (!translated) return;
+
+        const formatted = `${translated} (${value})`;
+
         if (prop === 'textContent') {
-          const val = el.textContent.trim();
-          if (val && this.config.exactMap[val] && !el.textContent.includes(this.config.exactMap[val])) {
-            this.replaceTextNode(el, this.config.exactMap[val], val, false);
-            this.translatedSet.add(el);
-          }
+          el.textContent = formatted;
         } else {
-          const val = el.getAttribute(prop)?.trim();
-          if (val && this.config.exactMap[val] && !val.includes(this.config.exactMap[val])) {
-            el.setAttribute(prop, `${this.config.exactMap[val]} (${val})`);
-            this.translatedSet.add(el);
-          }
+          el.setAttribute(prop, formatted);
         }
+
+        this.translatedSet.add(el);
       });
     }
 
     translateItemAttributes() {
       document.querySelectorAll('ul li').forEach(el => {
         if (this.translatedSet.has(el)) return;
+
         const txt = el.textContent.trim();
         for (const { regex, translation } of this.compiledTemplates) {
           const match = txt.match(regex);
           if (match) {
             let result = translation;
-            match.slice(2).forEach(val => result = result.replace('#', val));
+            match.slice(2).forEach(val => (result = result.replace('#', val)));
             el.textContent = (match[1] || '') + result;
             this.translatedSet.add(el);
             break;
@@ -105,19 +124,24 @@
     }
 
     translateFixedText() {
-      const elements = Array.from(document.querySelectorAll('p, span, li')).filter(el => {
-        const txt = el.textContent;
-        if (!txt?.trim()) return false;
-        if (this.config.exactMap[txt.trim()]) return false;
-        return Object.keys(this.config.fixedTextMap).some(key => txt.includes(key));
-      });
-      elements.forEach(el => {
+      const candidates = Array.from(document.querySelectorAll('p, span, li'));
+      candidates.forEach(el => {
         if (this.translatedSet.has(el)) return;
+
         let txt = el.textContent;
+        if (!txt?.trim()) return;
+
+        if (this.config.exactMap[txt.trim()]) return;
+
+        let changed = false;
         for (const [en, zh] of Object.entries(this.config.fixedTextMap)) {
-          txt = txt.replace(new RegExp(`\\b${en}\\b`, 'g'), zh);
+          if (txt.includes(en)) {
+            txt = txt.replace(new RegExp(`\\b${en}\\b`, 'g'), zh);
+            changed = true;
+          }
         }
-        if (txt !== el.textContent) {
+
+        if (changed) {
           el.textContent = txt;
           this.translatedSet.add(el);
         }
@@ -125,13 +149,15 @@
     }
 
     translateTippyRootText() {
-      const elements = Array.from(document.querySelectorAll('[data-tippy-root] span, [data-tippy-root] div'));
+      const elements = document.querySelectorAll('[data-tippy-root] span, [data-tippy-root] div');
       elements.forEach(el => {
         if (this.translatedSet.has(el)) return;
+
         const txt = el.textContent.trim();
         if (!txt) return;
+
         if (this.config.exactMap[txt]) {
-          this.replaceTextNode(el, this.config.exactMap[txt], txt, false);
+          el.textContent = `${this.config.exactMap[txt]} (${txt})`;
           this.translatedSet.add(el);
         } else if (this.config.fixedTextMap[txt]) {
           el.textContent = this.config.fixedTextMap[txt];
@@ -140,26 +166,60 @@
       });
     }
 
-    /**
-     * 翻译展开后的辅助技能
-     */
+    observeTriangles() {
+      const icons = document.querySelectorAll('img[src*="triangle-"], span[style*="triangle-"]');
+      icons.forEach(icon => {
+        if (this.observedTriangles.has(icon)) return;
+
+        const mo = new MutationObserver(() => this.handleTriangleChange(icon));
+        mo.observe(icon, { attributes: true, attributeFilter: ['src', 'style'] });
+
+        this.observedTriangles.add(icon);
+      });
+    }
+
+    handleTriangleChange(icon) {
+      const src = icon.getAttribute('src') || '';
+      const style = icon.getAttribute('style') || '';
+      const isUp = src.includes('triangle-up.svg') || style.includes('triangle-up.svg');
+      if (isUp) {
+        setTimeout(() => this.translateSupportGems(), 100);
+      }
+    }
+
+    // 动态探测展开后的辅助宝石节点
+    getSupportGemNodes() {
+      const icons = document.querySelectorAll('img[width="40"], img[height="40"], img[src*="SupportGem"]');
+      const nodes = [];
+      icons.forEach(icon => {
+        const row = icon.closest('div');
+        if (!row) return;
+        const textEl = row.querySelector('div, span, p');
+        if (!textEl) return;
+        const en = textEl.textContent.trim();
+        if (!en) return;
+        if (this.config.exactMap[en]) nodes.push(textEl);
+      });
+      return nodes;
+    }
+
     translateSupportGems() {
-      // 找到所有展开状态的技能块
-      const expandedBlocks = document.querySelectorAll('img[src*="triangle-up.svg"], span[style*="triangle-up.svg"]');
-      expandedBlocks.forEach(icon => {
-        const container = icon.closest('div');
-        if (!container) return;
-        // 在容器里找文字
-        const texts = container.querySelectorAll('div, span, p');
-        texts.forEach(el => {
-          if (this.translatedSet.has(el)) return;
-          const val = el.textContent.trim();
-          if (!val) return;
-          if (this.config.exactMap[val] && !el.textContent.includes(this.config.exactMap[val])) {
-            this.replaceTextNode(el, this.config.exactMap[val], val, true); // 🔥 换行格式
-            this.translatedSet.add(el);
-          }
-        });
+      const gemBlocks = this.getSupportGemNodes();
+      gemBlocks.forEach(el => {
+        if (el.dataset.supportTranslated === '1') return;
+
+        const en = el.textContent.trim();
+        const zh = this.config.exactMap[en];
+        if (!zh) return;
+
+        el.textContent = '';
+        const frag = document.createDocumentFragment();
+        frag.append(document.createTextNode(zh));
+        frag.append(document.createElement('br'));
+        frag.append(document.createTextNode(`(${en})`));
+        el.appendChild(frag);
+
+        el.dataset.supportTranslated = '1';
       });
     }
 
@@ -168,10 +228,13 @@
       let node;
       while ((node = walker.nextNode())) {
         if (this.translatedTextNodes.has(node)) continue;
+
         const raw = node.nodeValue;
         if (!raw) continue;
+
         const trimmed = raw.trim();
         if (!trimmed) continue;
+
         const tr = this.config.exactMap[trimmed];
         if (tr && !raw.includes(tr)) {
           node.nodeValue = `${tr} (${trimmed})`;
@@ -181,18 +244,18 @@
     }
 
     translateAll() {
-      this.config.selectorConfig.forEach(config => {
-        this.applyExactTranslation(this.multiQuery(config.selectors), config.attribute || 'textContent');
+      this.config.selectorConfig.forEach(cfg => {
+        this.applyExactTranslation(this.multiQuery(cfg.selectors), cfg.attribute || 'textContent');
       });
+
       this.translateItemAttributes();
       this.translateFixedText();
       this.translateTippyRootText();
-      this.translateSupportGems(); // 🔥 专门处理展开的辅助宝石
       this.translateFallback();
     }
   }
 
   const config = new TranslationConfig();
-  const translator = new Translator(config);
+  new Translator(config);
 
 })();
