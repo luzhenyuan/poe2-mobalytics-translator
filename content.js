@@ -1,9 +1,6 @@
 (function () {
   'use strict';
 
-  /**
-   * 配置类：存储所有的翻译映射和选择器配置。
-   */
   class TranslationConfig {
     constructor() {
       this.exactMap = { ...window.Others, ...window.legendaryItems, ...window.passives, ...window.Skills };
@@ -11,29 +8,22 @@
       this.fixedTextMap = window.fixedTextMap || {};
       this.selectorConfig = [
         { selectors: ['[data-tippy-root] p', '[data-tippy-root] span'] },
-        { selectors: ['p.x2fl5vp.x1g1qkmr', 'p[data-test="skill-name"]'] },
-        { selectors: ['img[alt]', 'img.skill-icon'], attribute: 'alt' },
-        { selectors: ['span.x5qbwci.xggjnk3', 'span.skill-name'] },
-        { selectors: ['p.x1cabzks'] }
+        { selectors: ['p[data-test="skill-name"]'] },
+        { selectors: ['img[alt]', 'img.skill-icon'], attribute: 'alt' }
       ];
     }
   }
 
-  /**
-   * 翻译类：处理网页中的所有翻译操作。
-   */
   class Translator {
     constructor(config) {
       this.config = config;
       this.translatedSet = new WeakSet();
+      this.translatedTextNodes = new WeakSet();
       this.compiledTemplates = this.compileTemplates();
       this.debouncedTranslate = this.debounce(this.translateAll.bind(this), 200);
       this.initObserver();
     }
 
-    /**
-     * 编译模板映射，生成匹配的正则表达式。
-     */
     compileTemplates() {
       return Object.entries(this.config.templateMap).map(([tpl, trans]) => {
         const escapedTemplate = tpl.replace(/([.*+?^=!:${}()|[\]/\\])/g, "\\$1");
@@ -42,9 +32,6 @@
       });
     }
 
-    /**
-     * 防抖函数：减少频繁执行的操作。
-     */
     debounce(fn, delay) {
       let timer = null;
       return function () {
@@ -53,9 +40,6 @@
       };
     }
 
-    /**
-     * 初始化 DOM 变化观察器，用于触发翻译操作。
-     */
     initObserver() {
       const observer = new MutationObserver(this.debouncedTranslate);
       observer.observe(document.body, { childList: true, subtree: true });
@@ -63,9 +47,6 @@
       document.addEventListener('click', () => setTimeout(this.translateAll.bind(this), 500));
     }
 
-    /**
-     * 根据选择器查询 DOM 元素。
-     */
     multiQuery(selectors) {
       for (const sel of selectors) {
         const nodes = document.querySelectorAll(sel);
@@ -74,46 +55,38 @@
       return [];
     }
 
-    /**
-     * 适用精确翻译：根据文本内容查找并替换翻译。
-     */
+    replaceTextNode(el, zh, en, useBreak = false) {
+      const frag = document.createDocumentFragment();
+      frag.append(zh);
+      if (useBreak) {
+        frag.append(document.createElement('br'));
+        frag.append(`(${en})`);
+      } else {
+        frag.append(` (${en})`);
+      }
+      el.textContent = ''; // 清空原内容
+      el.appendChild(frag);
+    }
+
     applyExactTranslation(elements, prop = 'textContent') {
       elements.forEach(el => {
         if (this.translatedSet.has(el)) return;
-        const val = prop === 'textContent' ? el.textContent.trim() : el.getAttribute(prop)?.trim();
-        if (val && this.config.exactMap[val] && !val.includes(this.config.exactMap[val])) {
-          const newVal = `${this.config.exactMap[val]} (${val})`;
-          if (prop === 'textContent') {
-            el.textContent = newVal;
-          } else {
-            el.setAttribute(prop, newVal);
+        if (prop === 'textContent') {
+          const val = el.textContent.trim();
+          if (val && this.config.exactMap[val] && !el.textContent.includes(this.config.exactMap[val])) {
+            this.replaceTextNode(el, this.config.exactMap[val], val, false);
+            this.translatedSet.add(el);
           }
-          this.translatedSet.add(el);
+        } else {
+          const val = el.getAttribute(prop)?.trim();
+          if (val && this.config.exactMap[val] && !val.includes(this.config.exactMap[val])) {
+            el.setAttribute(prop, `${this.config.exactMap[val]} (${val})`);
+            this.translatedSet.add(el);
+          }
         }
       });
     }
 
-    /**
-     * 只替换文本节点中的内容，不改变其他 DOM 子节点。
-     */
-    applyExactTextOnlyTranslation(elements) {
-      elements.forEach(el => {
-        if (this.translatedSet.has(el)) return;
-        const original = el.textContent.trim();
-        if (this.config.exactMap[original] && !el.textContent.includes(this.config.exactMap[original])) {
-          el.childNodes.forEach(node => {
-            if (node.nodeType === Node.TEXT_NODE) {
-              node.textContent = `${this.config.exactMap[original]} (${original})`;
-            }
-          });
-          this.translatedSet.add(el);
-        }
-      });
-    }
-
-    /**
-     * 翻译物品属性：处理与模板匹配的翻译。
-     */
     translateItemAttributes() {
       document.querySelectorAll('ul li').forEach(el => {
         if (this.translatedSet.has(el)) return;
@@ -131,9 +104,6 @@
       });
     }
 
-    /**
-     * 翻译固定文本：将文本替换为对应的固定翻译。
-     */
     translateFixedText() {
       const elements = Array.from(document.querySelectorAll('p, span, li')).filter(el => {
         const txt = el.textContent;
@@ -141,7 +111,6 @@
         if (this.config.exactMap[txt.trim()]) return false;
         return Object.keys(this.config.fixedTextMap).some(key => txt.includes(key));
       });
-
       elements.forEach(el => {
         if (this.translatedSet.has(el)) return;
         let txt = el.textContent;
@@ -155,9 +124,6 @@
       });
     }
 
-    /**
-     * 翻译 Tippy 提示框中的文本。
-     */
     translateTippyRootText() {
       const elements = Array.from(document.querySelectorAll('[data-tippy-root] span, [data-tippy-root] div'));
       elements.forEach(el => {
@@ -165,7 +131,7 @@
         const txt = el.textContent.trim();
         if (!txt) return;
         if (this.config.exactMap[txt]) {
-          el.textContent = `${this.config.exactMap[txt]} (${txt})`;
+          this.replaceTextNode(el, this.config.exactMap[txt], txt, false);
           this.translatedSet.add(el);
         } else if (this.config.fixedTextMap[txt]) {
           el.textContent = this.config.fixedTextMap[txt];
@@ -175,22 +141,57 @@
     }
 
     /**
-     * 翻译所有需要翻译的内容。
+     * 翻译展开后的辅助技能
      */
+    translateSupportGems() {
+      // 找到所有展开状态的技能块
+      const expandedBlocks = document.querySelectorAll('img[src*="triangle-up.svg"], span[style*="triangle-up.svg"]');
+      expandedBlocks.forEach(icon => {
+        const container = icon.closest('div');
+        if (!container) return;
+        // 在容器里找文字
+        const texts = container.querySelectorAll('div, span, p');
+        texts.forEach(el => {
+          if (this.translatedSet.has(el)) return;
+          const val = el.textContent.trim();
+          if (!val) return;
+          if (this.config.exactMap[val] && !el.textContent.includes(this.config.exactMap[val])) {
+            this.replaceTextNode(el, this.config.exactMap[val], val, true); // 🔥 换行格式
+            this.translatedSet.add(el);
+          }
+        });
+      });
+    }
+
+    translateFallback() {
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        if (this.translatedTextNodes.has(node)) continue;
+        const raw = node.nodeValue;
+        if (!raw) continue;
+        const trimmed = raw.trim();
+        if (!trimmed) continue;
+        const tr = this.config.exactMap[trimmed];
+        if (tr && !raw.includes(tr)) {
+          node.nodeValue = `${tr} (${trimmed})`;
+          this.translatedTextNodes.add(node);
+        }
+      }
+    }
+
     translateAll() {
-      // 遍历配置的选择器，动态翻译页面中的文本
       this.config.selectorConfig.forEach(config => {
         this.applyExactTranslation(this.multiQuery(config.selectors), config.attribute || 'textContent');
       });
-
-      // 翻译物品属性、固定文本和 Tippy 提示框
       this.translateItemAttributes();
       this.translateFixedText();
       this.translateTippyRootText();
+      this.translateSupportGems(); // 🔥 专门处理展开的辅助宝石
+      this.translateFallback();
     }
   }
 
-  // 初始化翻译配置和翻译器实例
   const config = new TranslationConfig();
   const translator = new Translator(config);
 
