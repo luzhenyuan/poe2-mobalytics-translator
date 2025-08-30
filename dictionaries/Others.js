@@ -3179,6 +3179,7 @@ window.Others = {
   "Hedron Bow":"海德隆之弓",
   "Foundry Bow":"鑄造之弓",
   "Solarine Bow":"日耀之弓",
+  "Gemini Bow":"雙子之弓",
   "Gnarled Branch":"朽木之幹",
   "Primitive Staff":"粗製長杖",
   "Long Staff":"長杖",

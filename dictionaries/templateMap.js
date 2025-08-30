@@ -2564,4 +2564,5 @@ window.templateMap = {
 "Kurgals Gaze":"柯戈的邪眼",
 "Tecrods Gaze":"特克羅德的邪眼",
 "Ulamans Gaze":"烏拉曼的邪眼",
+"Bow Attacks fire an additional Arrow":"弓的攻擊額外發射 1 支箭矢",
 };
