@@ -454,4 +454,6 @@ window.legendaryItems = {
   "Valakos Roar": "瓦拉庫之吼",
   "Kalandras Touch": "卡蘭德之觸",
   "Sekhemas Resolve": "絲克瑪的決意",
+  "Undying Hate": "不朽恨意",
+
 }
