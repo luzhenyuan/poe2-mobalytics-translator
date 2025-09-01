@@ -2565,4 +2565,5 @@ window.templateMap = {
 "Tecrods Gaze":"特克羅德的邪眼",
 "Ulamans Gaze":"烏拉曼的邪眼",
 "Bow Attacks fire an additional Arrow":"弓的攻擊額外發射 1 支箭矢",
+"#% increased Reservation Efficiency of Companion Skills":"盟友技能增加 #% 保留效率",
 };

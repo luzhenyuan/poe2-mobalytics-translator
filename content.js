@@ -83,22 +83,21 @@
       elements.forEach(el => {
         if (this.translatedSet.has(el)) return;
 
-        const value =
-          prop === 'textContent'
-            ? el.textContent.trim()
-            : el.getAttribute(prop)?.trim();
-
-        if (!value) return;
-
-        const translated = this.config.exactMap[value];
-        if (!translated) return;
-
-        const formatted = `${translated} (${value})`;
+        if (el.closest('[data-lexical-editor], [data-lexical-decorator]')) return;
 
         if (prop === 'textContent') {
-          el.textContent = formatted;
+          const textNodes = Array.from(el.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
+          textNodes.forEach(node => {
+            const raw = node.nodeValue.trim();
+            if (!raw) return;
+            const translated = this.config.exactMap[raw];
+            if (translated) node.nodeValue = `${translated} (${raw})`;
+          });
         } else {
-          el.setAttribute(prop, formatted);
+          const value = el.getAttribute(prop)?.trim();
+          if (!value) return;
+          const translated = this.config.exactMap[value];
+          if (translated) el.setAttribute(prop, `${translated} (${value})`);
         }
 
         this.translatedSet.add(el);
@@ -124,28 +123,33 @@
     }
 
     translateFixedText() {
-      const candidates = Array.from(document.querySelectorAll('p, span, li'));
-      candidates.forEach(el => {
-        if (this.translatedSet.has(el)) return;
+      const escapeReg = s => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 
-        let txt = el.textContent;
-        if (!txt?.trim()) return;
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        if (this.translatedTextNodes.has(node)) continue;
 
-        if (this.config.exactMap[txt.trim()]) return;
+        const raw = node.nodeValue;
+        if (!raw) continue;
 
+        let txt = raw;
         let changed = false;
+
+        // exactMap 的纯等值翻译在其它流程里做，这里只处理 fixedTextMap 的片段替换
         for (const [en, zh] of Object.entries(this.config.fixedTextMap)) {
-          if (txt.includes(en)) {
-            txt = txt.replace(new RegExp(`\\b${en}\\b`, 'g'), zh);
+          const re = new RegExp(`\\b${escapeReg(en)}\\b`, 'g');
+          if (re.test(txt)) {
+            txt = txt.replace(re, zh);
             changed = true;
           }
         }
 
         if (changed) {
-          el.textContent = txt;
-          this.translatedSet.add(el);
+          node.nodeValue = txt;
+          this.translatedTextNodes.add(node);
         }
-      });
+      }
     }
 
     translateTippyRootText() {
@@ -182,12 +186,9 @@
       const src = icon.getAttribute('src') || '';
       const style = icon.getAttribute('style') || '';
       const isUp = src.includes('triangle-up.svg') || style.includes('triangle-up.svg');
-      if (isUp) {
-        setTimeout(() => this.translateSupportGems(), 100);
-      }
+      if (isUp) setTimeout(() => this.translateSupportGems(), 100);
     }
 
-    // 动态探测展开后的辅助宝石节点
     getSupportGemNodes() {
       const icons = document.querySelectorAll('img[width="40"], img[height="40"], img[src*="SupportGem"]');
       const nodes = [];
