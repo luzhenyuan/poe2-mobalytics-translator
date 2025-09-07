@@ -193,4 +193,8 @@ window.passives = {
   "Corrupted Lifeforce":"腐化生命力",
   "As the Whispers Ask":"正如低語所問",
   "As the Whispers Demand":"正如低語所求",
+  "Walker of the Wilds":"荒野行者",
+  "Gem Enthusiast":"寶石愛好者",
+  
+
   }

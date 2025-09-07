@@ -2566,4 +2566,9 @@ window.templateMap = {
 "Ulamans Gaze":"烏拉曼的邪眼",
 "Bow Attacks fire an additional Arrow":"弓的攻擊額外發射 1 支箭矢",
 "#% increased Reservation Efficiency of Companion Skills":"盟友技能增加 #% 保留效率",
+"Mana Leech recovers based on Elemental Damage Types instead of Physical Damage":"魔力偷取會依據你的元素傷害類型而非物理傷害進行恢復",
+"#% increased Maximum Life if you have at least # Red Support Gems Socketed":"若你插槽中有至少 # 顆紅色輔助寶石，增加 #% 最大生命",
+"#% increased Maximum Mana if you have at least # Blue Support Gems Socketed":"若你插槽中有至少 # 顆藍色輔助寶石，增加 #% 最大魔力",
+"#% increased Movement Speed if you have at least # Green Support Gems Socketed":"若你插槽中有至少 # 顆綠色輔助寶石，增加 #% 移動速度",
+
 };

@@ -6602,4 +6602,9 @@ window.Others = {
   "Gargantuan Mana Flask":"巨大魔力藥劑",
   "Transcendent Mana Flask":"卓越魔力藥劑",
   "Ultimate Mana Flask":"終極魔力藥劑",
+  "Farrul's Rune of the Chase":"費爾羅的追擊符文",
+  "Farruls Rune of the Chase":"費爾羅的追擊符文",
+  "Talisman of Sirrius":"席里斯護符",
+  "Countess Seske's Rune of Archery":"伯爵夫人瑟絲可的箭術符文",
+  "Countess Seskes Rune of Archery":"伯爵夫人瑟絲可的箭術符文",
 };
