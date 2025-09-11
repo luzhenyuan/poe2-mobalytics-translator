@@ -340,7 +340,7 @@ window.Skills = {
   "Atalui's Bloodletting":" 阿特路伊的出血",
   "Behead I":" 斬首 I",
   "Behead II":" 斬首 II",
-  "Einhar's Beastrite":" Einhar's Beastrite",
+  "Einhar's Beastrite":"埃哈的野獸儀式",
   "Execute I":" 處刑 I",
   "Execute II":" 處刑 II",
   "Execute III":" 處刑 III",
@@ -865,4 +865,5 @@ window.Skills = {
   "Kulemaks Dominion":" 骷髏馬克的支配",
   "Varashtas Blessing":" 瓦拉什塔的祝福",
   "Arbiters Ignition":" 仲裁者的燃灼",
+  "Cast on Charm Use":" 使用護符時施放",
 }

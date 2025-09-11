@@ -129,6 +129,9 @@
       let node;
       while ((node = walker.nextNode())) {
         if (this.translatedTextNodes.has(node)) continue;
+        if (node.parentElement && node.parentElement.getAttribute('data-lexical-text') === 'true') {
+          continue;
+        }
 
         const raw = node.nodeValue;
         if (!raw) continue;
@@ -136,7 +139,6 @@
         let txt = raw;
         let changed = false;
 
-        // exactMap 的纯等值翻译在其它流程里做，这里只处理 fixedTextMap 的片段替换
         for (const [en, zh] of Object.entries(this.config.fixedTextMap)) {
           const re = new RegExp(`\\b${escapeReg(en)}\\b`, 'g');
           if (re.test(txt)) {
@@ -229,6 +231,9 @@
       let node;
       while ((node = walker.nextNode())) {
         if (this.translatedTextNodes.has(node)) continue;
+        if (node.parentElement && node.parentElement.getAttribute('data-lexical-text') === 'true') {
+          continue;
+        }
 
         const raw = node.nodeValue;
         if (!raw) continue;
@@ -258,5 +263,120 @@
 
   const config = new TranslationConfig();
   new Translator(config);
+
+function cleanText(el) {
+  let html = el.innerHTML;
+  html = html.replace(/<br\s*\/?>/gi, "\n");
+  html = html.replace(/<\/p>/gi, "\n");
+  html = html.replace(/<[^>]+>/g, "");
+  html = html.replace(/\n\s*\n+/g, "\n\n").trim();
+  return html;
+}
+
+function extractSectionText(section) {
+  let parts = [];
+  section.querySelectorAll("h3,h4,p,li").forEach(el => {
+    if (el.closest('[role="button"]')) return;
+    const txt = cleanText(el);
+    if (!txt) return;
+    if (txt.startsWith("Support Gem Requirements")) return;
+    if (/^(Str|Dex|Int)\s*\d+$/.test(txt)) return;
+    parts.push(txt);
+  });
+  return parts.join("\n");
+}
+
+function addCopyButtons() {
+  const root = document.querySelector(
+    "#container > div > main > div:nth-child(2) > div > section > section:nth-child(2) > section:nth-child(1)"
+  );
+  if (!root) return;
+
+  const sections = root.querySelectorAll("section[data-allow-dnd]");
+  if (!sections.length) return;
+
+
+  sections.forEach((section) => {
+    const header = section.querySelector("header");
+    if (!header) return;
+    const titleEl = header.querySelector("h2,h3,h4,h5");
+    if (!titleEl) return;
+
+    const title = titleEl.innerText.trim();
+    if (title.includes("Build Overview")) return;
+
+    if (header.querySelector(".copy-section-btn")) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className =
+      "x1n2onr6 x19l6gds x19jf9pv x78zum5 x6s0dn4 x167g77z xlkovuz x1ypdohk xuxw1ft x10w6t97 x84vhe8 xl56j7k x1mx5ifq x1kylzug xsj9wuo x1g1qkmr copy-section-btn";
+    btn.innerHTML = `<span role="img" style="mask:url(https://cdn.mobalytics.gg/assets/common/icons/ngf-system/share.svg) center/cover"
+      class="x1kky2od xlup9mm x1vipdrg"></span>复制`;
+
+    btn.addEventListener("click", () => {
+      const stage = section.querySelector('[role="tab"][aria-selected="true"] span')?.innerText || "";
+      const body = extractSectionText(section);
+      const content = `${title}${stage ? " - " + stage : ""}\n\n${body}`;
+      navigator.clipboard.writeText(content).then(() => {
+        btn.textContent = "✅ 已複製";
+        setTimeout(() => {
+          btn.innerHTML = `<span role="img" style="mask:url(https://cdn.mobalytics.gg/assets/common/icons/ngf-system/share.svg) center/cover"
+            class="x1kky2od xlup9mm x1vipdrg"></span>复制`;
+        }, 1500);
+      });
+    });
+
+    const container = titleEl.parentElement;
+    container.style.display = "flex";
+    container.style.alignItems = "center";
+    container.style.justifyContent = "space-between";
+    container.appendChild(btn);
+  });
+
+  const topTitle = root.querySelector("header h2");
+  if (topTitle && !topTitle.parentElement.querySelector(".copy-all-btn")) {
+    const btnAll = document.createElement("button");
+    btnAll.type = "button";
+    btnAll.className =
+      "x1n2onr6 x19l6gds x19jf9pv x78zum5 x6s0dn4 x167g77z xlkovuz x1ypdohk xuxw1ft x10w6t97 x84vhe8 xl56j7k x1mx5ifq x1kylzug xsj9wuo x1g1qkmr copy-all-btn";
+    btnAll.innerHTML = `<span role="img" style="mask:url(https://cdn.mobalytics.gg/assets/common/icons/ngf-system/share.svg) center/cover"
+      class="x1kky2od xlup9mm x1vipdrg"></span>复制全部`;
+
+    btnAll.addEventListener("click", () => {
+      let content = "";
+      const latestSections = root.querySelectorAll("section[data-allow-dnd]");
+      latestSections.forEach((sec) => {
+        const headerEl = sec.querySelector("header h2,h3,h4,h5");
+        if (!headerEl) return;
+        const title = headerEl.innerText.trim();
+        const stage = sec.querySelector('[role="tab"][aria-selected="true"] span')?.innerText || "";
+        const body = extractSectionText(sec);
+        if (body) content += `${title}${stage ? " - " + stage : ""}\n\n${body}\n\n`;
+      });
+      if (content.trim()) {
+        navigator.clipboard.writeText(content.trim()).then(() => {
+          btnAll.textContent = "✅ 已复制全部";
+          setTimeout(() => {
+            btnAll.innerHTML = `<span role="img" style="mask:url(https://cdn.mobalytics.gg/assets/common/icons/ngf-system/share.svg) center/cover"
+              class="x1kky2od xlup9mm x1vipdrg"></span>复制全部`;
+          }, 1500);
+        });
+      }
+    });
+
+    const container = topTitle.parentElement;
+    container.style.display = "flex";
+    container.style.alignItems = "center";
+    container.style.justifyContent = "space-between";
+    container.appendChild(btnAll);
+  }
+}
+
+window.addEventListener("load", addCopyButtons);
+const mo = new MutationObserver(addCopyButtons);
+mo.observe(document.body, { childList: true, subtree: true });
+
+
 
 })();
