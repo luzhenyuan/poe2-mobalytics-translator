@@ -2251,9 +2251,7 @@ window.templateMap = {
   "+# to Evasion Rating per # Maximum Energy Shield on Equipped Helmet":"裝備的頭盔每 # 最大能量護盾 +# 閃避值",
   "+# to maximum Energy Shield per # Evasion Rating on Equipped Body Armour":"裝備的胸甲每 # 閃避值 +# 最大能量護盾",
   "Includes base value, local modifiers, and maximum quality":"包含基礎值、區域詞綴和最大品質",
-  "Evasion":"閃避",
   "Includes base value and local modifiers":"包含基礎值和區域詞綴",
-  "Spirit":"精魂",
   "Any":"任何",
   "Any Weapon":"武器",
   "Any One-Handed Melee Weapon":"任何單手近戰武器",
@@ -2453,4 +2451,6 @@ window.templateMap = {
   "#% increased Maximum Life if you have at least # Red Support Gems Socketed":"若你插槽中有至少 # 顆紅色輔助寶石，增加 #% 最大生命",
   "#% increased Maximum Mana if you have at least # Blue Support Gems Socketed":"若你插槽中有至少 # 顆藍色輔助寶石，增加 #% 最大魔力",
   "#% increased Movement Speed if you have at least # Green Support Gems Socketed":"若你插槽中有至少 # 顆綠色輔助寶石，增加 #% 移動速度",
+  "Regenerate # Life per second per # Life spent in the past # seconds":"在過去 # 秒內每消耗 # 生命，每秒回復 # 生命",
+  "#% more Life Cost of Skills":"#% 更多技能生命消耗",
 };

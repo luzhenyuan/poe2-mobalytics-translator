@@ -1,17 +1,19 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extension_name__",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "default_locale": "zh_CN",
   "description": "__MSG_extension_description__",
   "permissions": [],
   "host_permissions": [
     "https://mobalytics.gg/poe-2/*",
-    "https://poe.ninja/poe2/*"
+    "https://poe.ninja/poe2/*",
+    "https://maxroll.gg/poe2/*",
+    "https://poe2scout.com/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://mobalytics.gg/poe-2/*", "https://poe.ninja/poe2/*"],
+      "matches": ["https://mobalytics.gg/poe-2/*", "https://poe.ninja/poe2/*","https://maxroll.gg/poe2/*","https://poe2scout.com/*"],
       "js": [
         "dictionaries/Others.js",
         "dictionaries/Skills.js",

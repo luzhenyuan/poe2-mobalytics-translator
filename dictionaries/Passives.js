@@ -195,6 +195,13 @@ window.passives = {
   "As the Whispers Demand":"正如低語所求",
   "Walker of the Wilds":"荒野行者",
   "Gem Enthusiast":"寶石愛好者",
-  
+  "Sacrifice of Blood":"鮮血獻祭",
+  "Nimble Strength":"命中",
+  "Crystallised Immunities":"水晶化免疫",
+  "The Winter Owl":"冬鴞",
+  "Chakra of Impact":"空手攻擊速度",
+  "Acceleration":"加速",
+  "Empowering Remnants":"強化痕跡",
+  "Warlord Leader":"總督軍領袖",
 
   }

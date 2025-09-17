@@ -866,4 +866,6 @@ window.Skills = {
   "Varashtas Blessing":" 瓦拉什塔的祝福",
   "Arbiters Ignition":" 仲裁者的燃灼",
   "Cast on Charm Use":" 使用護符時施放",
+  "Requiem":"安魂曲",
+  "Companion: {0}":"盟友: {0}",
 }

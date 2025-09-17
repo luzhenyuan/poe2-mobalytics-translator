@@ -455,5 +455,5 @@ window.legendaryItems = {
   "Kalandras Touch": "卡蘭德之觸",
   "Sekhemas Resolve": "絲克瑪的決意",
   "Undying Hate": "不朽恨意",
-
+  "Heart of the Well":"水井之心",
 }
